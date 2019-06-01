@@ -1,1 +1,49 @@
-响应者链
+什么是响应链，它是怎么工作的
+
+事件的产生和传递
+事件是如何产生与传递的?
+当发生触摸事件后,系统会将该事件加入到一个由UIApplication管理的事件队列中.
+UIApplication会从事件队列中取出最前面的事件,并将事件分发下去以便处理.
+主窗口会在视图层次结构中找到一个最合适的视图来处理触摸事件.
+触摸事件的传递是从父控件传递到子控件的,如果一个父控件不能接收事件,那么他里面的子控件也不能接收.
+
+事件的响应
+用户点击屏幕产生的一个触摸事件,经过一系列的传递过程后,会找到一个最适合的视图来处理事件.
+找到最合适的视图控件后,就会调用控件的touches方法来作具体的时间处理.
+touches的默认做法是将事件顺着响应者链条向上传递,将事件交给上一个响应者处理
+
+什么是响应者链条?
+
+由多个响应者对象连接起来的链条
+
+什么是响应者对象?
+
+继承了UIResponder的对象
+
+如何去寻找上一个响应者
+1.如果当前的View是控制器的View,那么控制器就是上一个响应者
+2.如果当前的View不是控制器的View,那么他的父控件就是上一个响应者
+3.在视图层次结构的最顶级视图,如果也不能处理收到的事件或消息,则其将事件或消息传递给window对象进行处理
+4.如果window对象也不处理，则其将事件或消息传递给UIApplication对象
+5.如果UIApplication也不能处理该事件或消息，则将其丢弃
+
+
+UIKit使用基于视图的hit-testing来确定touch事件发生的位置。
+具体解释就是，UIKit将touch的位置和视图层级中的view的边界进行了比较，
+UIView的方法 hitTest:withEvent: 
+在视图层级中进行，寻找包含指定touch的最深子视图。这个视图成为touch事件的第一个响应者。
+
+说白了就是，当有touch事件来的时候，会从最下面的视图开始执行 hitTest:withEvent: ，
+如果符合成为响应者的条件，就会继续遍历它的 subviews 继续执行 hitTest:withEvent: ，直到找到最合适的view成为响应者。
+
+AppDelegate 的 window 收到事件，并开始执行 hitTest:withEvent: ，发现符合要求，开始遍历子view.
+window 上只有 viewcontroller.view ,所以viewcontroller.view 开始执行 hitTest:withEvent: ，发现符合要求，开始遍历子view.
+viewcontroller.view 有两个子view， viewA 和 viewB ，但是viewB 在 viewA 上边，所以先 viewB 执行 hitTest:withEvent: ，
+结果发现viewB 不符合要求，因为viewB 的 userInteractionEnabled 为 NO.
+接下来 viewA 执行 hitTest:withEvent: ，发现符合条件，并且viewA 也没有子view可去遍历，于是返回viewA.
+viewA成了最终事件的响应者.
+
+
+参考: https://www.jianshu.com/p/53100391a920
+     https://www.jianshu.com/p/9179e5d780c8
+

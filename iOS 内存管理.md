@@ -378,6 +378,48 @@ Tagged pointer 存储对象数据目前 分为 60bits 负载容量和 52bits 负
 
 ```
 
+
+##### NSString
+接下来我们来分析一下Tagged Pointer在NSString中的应用。同NSNumber一样，在64 bit的MacOS下，如果一个NSString对象指针为Tagged Pointer，那么它的后 4 位（0-3）作为标识位，第 4-7 位表示字符串长度，剩余的 56 位就可以用来存储字符串。
+示例：
+
+![](https://raw.githubusercontent.com/macong0420/Picture/master/img/20210604151830.png)
+
+从打印结果来看，有三种NSString类型：
+
+| 类型 | 描述 |
+| --- | --- |
+| __NSCFConstantString | 1. 常量字符串，存储在字符串常量区，继承于 __NSCFString。相同内容的 __NSCFConstantString 对象的地址相同，也就是说常量字符串对象是一种单例，可以通过 == 判断字符串内容是否相同。2. 这种对象一般通过字面值@"..."创建。如果使用 __NSCFConstantString 来初始化一个字符串，那么这个字符串也是相同的 __NSCFConstantString。 |
+| __NSCFString | 1. 存储在堆区，需要维护其引用计数，继承于 NSMutableString。 2. 通过stringWithFormat:等方法创建的NSString对象（且字符串值过大无法使用Tagged Pointer存储）一般都是这种类型。 |
+| NSTaggedPointerString | Tagged Pointer，字符串的值直接存储在了指针上。 |
+
+
+打印结果分析：
+
+
+| NSString 对象 |  类型 | 分析  |
+| --- | --- | --- |
+|a  |  __NSCFConstantString| 通过字面量@"..."创建 |
+| b | __NSCFString | a 的深拷贝，指向不同的内存地址，被拷贝到堆区 |
+|  c|__NSCFConstantString| a 的浅拷贝，指向同一块内存地址 |
+| d | NSTaggedPointerString |单独对 a 进行 copy（如 c），浅拷贝是指向同一块内存地址，所以不会产生Tagged Pointer；单独对 a 进行 mutableCopy（如 b），复制出来是可变对象，内容大小可以扩展；而Tagged Pointer存储的内容大小有限，因此无法满足可变对象的存储要求。 |
+| e | __NSCFConstantString | 使用 __NSCFConstantString 来初始化的字符串 |
+| f |NSTaggedPointerString	  | 通过stringWithFormat:方法创建，指针足够存储字符串的值。 |
+|string1  |NSTaggedPointerString  |  通过stringWithFormat:方法创建，指针足够存储字符串的值。|
+| string2 |NSTaggedPointerString | 通过stringWithFormat:方法创建，指针足够存储字符串的值。 |
+| string3 | __NSCFString | 通过stringWithFormat:方法创建，指针不足够存储字符串的值。 |
+
+
+可以看到，为Tagged Pointer的有d、f、string1、string2指针。它们的指针值分别为
+0x6115、0x6615 、0x6766656463626175、0x880e28045a54195。
+其中0x61、0x66、0x67666564636261分别对应字符串的 ASCII 码。
+最后一位5的二进制为0101，最后一位1是代表这个指针是Tagged Pointer，010对应十进制为2，表示NSString类。
+倒数第二位1、1、7、9代表字符串长度。
+对于string2的指针值0x880e28045a54195，虽然从指针中看不出来字符串的值，但其也是一个Tagged Pointer。
+下图是MacOS下NSString的Tagged Pointer位视图：
+
+![](https://raw.githubusercontent.com/macong0420/Picture/master/img/20210604153313.png)
+
 小结：
 
 
